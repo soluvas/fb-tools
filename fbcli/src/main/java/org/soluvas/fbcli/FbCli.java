@@ -7,11 +7,10 @@ import javax.inject.Inject;
 import javax.inject.Named;
 
 import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.ContentEncodingHttpClient;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.params.HttpParamsNames;
 import org.jboss.weld.environment.se.bindings.Parameters;
 import org.jboss.weld.environment.se.events.ContainerInitialized;
 import org.slf4j.Logger;
@@ -36,16 +35,23 @@ public class FbCli {
 		
 		if ("friends".equals(args[0])) {
 			try {
-				DefaultHttpClient httpClient = new ContentEncodingHttpClient();
-				URI friendsUri = new URIBuilder("https://graph.facebook.com/me/friends").addParameter("access_token", accessToken).build();
-				HttpGet getReq = new HttpGet(friendsUri);
-				HttpResponse friendsResp = httpClient.execute(getReq);
-				
-				JsonFactory jsonFactory = new JsonFactory();
-				JsonParser jsonParser = jsonFactory.createJsonParser(friendsResp.getEntity().getContent());
-				jsonParser.nextToken();
-				JsonGenerator jsonGenerator = jsonFactory.createJsonGenerator(System.out).useDefaultPrettyPrinter();
-				jsonGenerator.copyCurrentStructure(jsonParser);
+				// this works: 
+				HttpClient httpClient = new ContentEncodingHttpClient();
+				try {
+					// this doesn't work:
+					// HttpClient httpClient = new DecompressingHttpClient(new DefaultHttpClient());
+					URI friendsUri = new URIBuilder("https://graph.facebook.com/me/friends").addParameter("access_token", accessToken).build();
+					HttpGet getReq = new HttpGet(friendsUri);
+					HttpResponse friendsResp = httpClient.execute(getReq);
+					
+					JsonFactory jsonFactory = new JsonFactory();
+					JsonParser jsonParser = jsonFactory.createJsonParser(friendsResp.getEntity().getContent());
+					JsonGenerator jsonGenerator = jsonFactory.createJsonGenerator(System.out).useDefaultPrettyPrinter();
+					while (jsonParser.nextToken() != null)
+						jsonGenerator.copyCurrentStructure(jsonParser);
+				} finally {
+					httpClient.getConnectionManager().shutdown();
+				}
 			} catch (Exception ex) {
 				throw new RuntimeException(ex);
 			}
