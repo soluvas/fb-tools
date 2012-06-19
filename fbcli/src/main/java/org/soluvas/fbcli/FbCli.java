@@ -6,6 +6,7 @@ import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
 
+import javax.annotation.PostConstruct;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -15,17 +16,19 @@ import org.jboss.weld.environment.se.bindings.Parameters;
 import org.jboss.weld.environment.se.events.ContainerInitialized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.soluvas.slug.SlugUtils;
 
 import akka.actor.ActorSystem;
 import akka.dispatch.Await;
 import akka.dispatch.Future;
+import akka.dispatch.Futures;
+import akka.dispatch.Mapper;
 import akka.util.Duration;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.base.Function;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 /**
@@ -36,10 +39,15 @@ public class FbCli {
 	@Inject @Parameters String[] args;
 	@Inject @Named("facebook_accessToken") String accessToken;
 	@Inject ActorSystem actorSystem;
+	private ObjectMapper mapper;
 	
 	@Inject FriendListDownloader friendListDownloader;
 	@Inject FbGetUser getUserCmd;
 	@Inject UserListParser userListParser;
+	
+	@PostConstruct public void init() {
+		mapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+	}
 	
 	public void run(@Observes ContainerInitialized e) {
 		log.info("fbcli starting");
@@ -80,8 +88,50 @@ public class FbCli {
 				});
 				List<UserRef> userList = Await.result(userListParser.parse(files), Duration.Inf());
 				log.info("Parsed {} users", userList.size());
-			} else if ("user-getmany".equals(args[0])) {
-				// Get many user 
+			} else if ("user-getmanyfromfiles".equals(args[0])) {
+				// Get many user, list of user IDs parsed from JSON files 
+				// Parse user list from JSON files 
+				String[] fileNames = Arrays.copyOfRange(args, 1, args.length);
+				List<File> files = Lists.transform(Arrays.asList(fileNames), new Function<String, File>() {
+					@Override
+					public File apply(String input) {
+						return new File(input);
+					}
+				});
+				Future<List<UserRef>> userListFuture = userListParser.parse(files);
+				List<UserRef> userList = Await.result(userListFuture, Duration.Inf());
+				log.info("Parsed {} users", userList.size());
+				
+				// Get each user by ID and save to file
+				Futures.traverse(userList, new akka.japi.Function<UserRef, Future<File>>() {
+					@Override
+					public Future<File> apply(UserRef userRef) {
+						return getUserCmd.getUser(userRef.getId()).map(new Mapper<JsonNode, File>() {
+							@Override
+							public File apply(JsonNode node) {
+								if (!node.has("id"))
+									throw new RuntimeException("Cannot find 'id' property in JSON");
+								if (!node.has("name"))
+									throw new RuntimeException("Cannot find 'name' property in JSON");
+								String id = node.get("id").asText();
+								String name = node.get("name").asText();
+								File file = new File("output", "facebook_" + id + "_" + SlugUtils.generateId(name, 0) + ".js");
+								try {
+									mapper.writeValue(file, node);
+									return file;
+								} catch (Exception e) {
+									throw new RuntimeException("Cannot generate JSON to " + file, e);
+								}
+							}
+						});
+					}
+				}, actorSystem.dispatcher());
+//				Futures.traverse(userList, new akka.japi.Function<UserRef, Future<JsonNode>>() {
+//					@Override
+//					public Future<JsonNode> apply(UserRef userRef) {
+//						return getUserCmd.getUser(userRef.getId());
+//					}
+//				}, actorSystem.dispatcher());
 			}
 		} catch (Exception ex) {
 			log.error("Error executing command", ex);

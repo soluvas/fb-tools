@@ -9,6 +9,7 @@ import javax.inject.Named;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.utils.HttpClientUtils;
 import org.apache.http.client.utils.URIBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,8 +54,14 @@ public class FbGetUser {
 				log.info("Fetching user page {}", uri);
 				HttpGet getReq = new HttpGet(uri);
 				HttpResponse resp = httpClient.execute(getReq);
-				JsonNode json = mapper.readTree(resp.getEntity().getContent());
-				return json;
+				try {
+					if (resp.getStatusLine().getStatusCode() != 200)
+						throw new RuntimeException("GET " + uri + " returned " + resp.getStatusLine());
+					JsonNode json = mapper.readTree(resp.getEntity().getContent());
+					return json;
+				} finally {
+					HttpClientUtils.closeQuietly(resp);
+				}
 			}
 		}, actorSystem.dispatcher());
 	}
