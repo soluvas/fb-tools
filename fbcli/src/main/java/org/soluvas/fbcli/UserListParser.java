@@ -6,6 +6,9 @@ import java.util.concurrent.Callable;
 
 import javax.inject.Inject;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import akka.actor.ActorSystem;
 import akka.dispatch.Future;
 import akka.dispatch.Futures;
@@ -21,6 +24,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  */
 public class UserListParser {
 	
+	private transient Logger log = LoggerFactory.getLogger(UserListParser.class);
 	@Inject private ActorSystem actorSystem;
 	private ObjectMapper mapper = new ObjectMapper();
 	
@@ -32,7 +36,9 @@ public class UserListParser {
 		return Futures.future(new Callable<List<UserRef>>() {
 			@Override
 			public List<UserRef> call() throws Exception {
-				return mapper.convertValue(rootNode.get("data"), new TypeReference<List<UserRef>>() { });
+				List<UserRef> userList = mapper.convertValue(rootNode.get("data"), new TypeReference<List<UserRef>>() { });
+				log.debug("Parsed list of {} Facebook users", userList.size());
+				return userList;
 			}
 		}, actorSystem.dispatcher());
 	}
