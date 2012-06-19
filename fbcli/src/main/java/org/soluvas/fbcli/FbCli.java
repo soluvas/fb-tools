@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.base.Function;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
 /**
@@ -103,19 +104,18 @@ public class FbCli {
 				log.info("Parsed {} users", userList.size());
 				
 				// Get each user by ID and save to file
-				Futures.traverse(userList, new akka.japi.Function<UserRef, Future<File>>() {
+				Future<Iterable<File>> filesFuture = Futures.traverse(userList, new akka.japi.Function<UserRef, Future<File>>() {
 					@Override
 					public Future<File> apply(UserRef userRef) {
+						final File file = new File("output", "facebook_" + userRef.getId() + "_" +
+									SlugUtils.generateId(userRef.getName(), 0) + ".js");
+						if (file.exists()) {
+							log.warn("{} exists, skipping", file);
+							return Futures.successful(file, actorSystem.dispatcher());
+						}
 						return getUserCmd.getUser(userRef.getId()).map(new Mapper<JsonNode, File>() {
 							@Override
 							public File apply(JsonNode node) {
-								if (!node.has("id"))
-									throw new RuntimeException("Cannot find 'id' property in JSON");
-								if (!node.has("name"))
-									throw new RuntimeException("Cannot find 'name' property in JSON");
-								String id = node.get("id").asText();
-								String name = node.get("name").asText();
-								File file = new File("output", "facebook_" + id + "_" + SlugUtils.generateId(name, 0) + ".js");
 								try {
 									mapper.writeValue(file, node);
 									return file;
@@ -126,6 +126,8 @@ public class FbCli {
 						});
 					}
 				}, actorSystem.dispatcher());
+				Iterable<File> outFiles = Await.result(filesFuture, Duration.Inf());
+				log.info("Written {} user JSON files", Iterables.size(outFiles));
 //				Futures.traverse(userList, new akka.japi.Function<UserRef, Future<JsonNode>>() {
 //					@Override
 //					public Future<JsonNode> apply(UserRef userRef) {
