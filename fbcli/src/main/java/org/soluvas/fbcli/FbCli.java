@@ -11,6 +11,7 @@ import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.inject.Named;
 
+import org.apache.commons.io.FilenameUtils;
 import org.apache.http.client.utils.URIBuilder;
 import org.jboss.weld.environment.se.bindings.Parameters;
 import org.jboss.weld.environment.se.events.ContainerInitialized;
@@ -45,6 +46,7 @@ public class FbCli {
 	@Inject FriendListDownloader friendListDownloader;
 	@Inject FbGetUser getUserCmd;
 	@Inject UserListParser userListParser;
+	@Inject VcardConverter vcardConverter;
 	
 	@PostConstruct public void init() {
 		mapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
@@ -128,12 +130,13 @@ public class FbCli {
 				}, actorSystem.dispatcher());
 				Iterable<File> outFiles = Await.result(filesFuture, Duration.Inf());
 				log.info("Written {} user JSON files", Iterables.size(outFiles));
-//				Futures.traverse(userList, new akka.japi.Function<UserRef, Future<JsonNode>>() {
-//					@Override
-//					public Future<JsonNode> apply(UserRef userRef) {
-//						return getUserCmd.getUser(userRef.getId());
-//					}
-//				}, actorSystem.dispatcher());
+			} else if ("userjson-tovcard".equals(args[0])) {
+				// Convert a single user JSON to vCard
+				String fileName = args[1];
+				File jsonFile = new File(fileName);
+				File vcardFile = new File(jsonFile.getParentFile(), "vcard/" + FilenameUtils.getBaseName(fileName) + ".vcf");
+				Future<Boolean> success = vcardConverter.toVcard(jsonFile, vcardFile);
+				Await.result(success, Duration.Inf());
 			}
 		} catch (Exception ex) {
 			log.error("Error executing command", ex);

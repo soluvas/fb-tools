@@ -30,6 +30,17 @@
 		</dependency>
 
 		<dependency>
+			<groupId>cardme</groupId>
+			<artifactId>cardme</artifactId>
+			<version>0.2.6</version>
+		</dependency>
+		<!-- 		<dependency> -->
+<!-- 			<groupId>org.mnode.ical4j</groupId> -->
+<!-- 			<artifactId>ical4j-vcard</artifactId> -->
+<!-- 			<version>0.9.5</version> -->
+<!-- 		</dependency> -->
+
+		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
 			<version>2.0.2</version>
