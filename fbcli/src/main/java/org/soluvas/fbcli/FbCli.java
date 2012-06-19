@@ -7,8 +7,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.inject.Named;
@@ -17,9 +15,6 @@ import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.impl.client.ContentEncodingHttpClient;
-import org.apache.http.impl.conn.PoolingClientConnectionManager;
-import org.apache.http.params.BasicHttpParams;
 import org.jboss.weld.environment.se.bindings.Parameters;
 import org.jboss.weld.environment.se.events.ContainerInitialized;
 import org.slf4j.Logger;
@@ -43,24 +38,9 @@ public class FbCli {
 	private transient Logger log = LoggerFactory.getLogger(FbCli.class);
 	@Inject @Parameters String[] args;
 	@Inject @Named("facebook_accessToken") String accessToken;
-	private HttpClient httpClient;
-	private ActorSystem actorSystem;
-	
-	@PostConstruct public void init() {
-		actorSystem = ActorSystem.create(FbCli.class.getSimpleName());
-		// this works: 
-		httpClient = new ContentEncodingHttpClient(new PoolingClientConnectionManager(), new BasicHttpParams());
-		// this doesn't work:
-//		 HttpClient httpClient = new DecompressingHttpClient(new DefaultHttpClient(new PoolingClientConnectionManager(), new BasicHttpParams()));
-
-	}
-	
-	@PreDestroy public void destroy() {
-		if (httpClient != null)
-			httpClient.getConnectionManager().shutdown();
-		if (actorSystem != null)
-		actorSystem.shutdown();
-	}
+	@Inject FbGetUser getUserCmd;
+	@Inject HttpClient httpClient;
+	@Inject ActorSystem actorSystem;
 	
 	public Future<JsonNode> fetchFriendsPage(final URI uri) {
 		return Futures.future(new Callable<JsonNode>() {
@@ -115,8 +95,8 @@ public class FbCli {
 		if (args.length < 1)
 			throw new RuntimeException("Requires command line arguments.");
 		
-		if ("friends".equals(args[0])) {
-			try {
+		try {
+			if ("friends".equals(args[0])) {
 				URI friendsUri = new URIBuilder("https://graph.facebook.com/me/friends")
 					.addParameter("access_token", accessToken)
 					.addParameter("limit", "100")
@@ -132,9 +112,18 @@ public class FbCli {
 					mapper.writeValue(new FileWriter(file), pages.get(i));
 				}
 				log.info("Saved {} pages", pages.size());
-			} catch (Exception ex) {
-				throw new RuntimeException(ex);
+			} else if ("user-get".equals(args[0])) {
+				// Get single user and print to console 
+				JsonNode jsonNode = Await.result( getUserCmd.getUser(args[1]), Duration.Inf() );
+				ObjectMapper mapper = new ObjectMapper();
+				mapper.enable(SerializationFeature.INDENT_OUTPUT);
+				mapper.writeValue(System.out, jsonNode);
+			} else if ("user-getmany".equals(args[0])) {
+				// Get many user 
 			}
+		} catch (Exception ex) {
+			log.error("Error executing command", ex);
+			throw new RuntimeException("Error executing command", ex);
 		}
 	}
 }
