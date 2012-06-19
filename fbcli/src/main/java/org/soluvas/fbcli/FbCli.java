@@ -3,6 +3,7 @@ package org.soluvas.fbcli;
 import java.io.File;
 import java.io.FileWriter;
 import java.net.URI;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.enterprise.event.Observes;
@@ -15,6 +16,7 @@ import org.jboss.weld.environment.se.events.ContainerInitialized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import akka.actor.ActorSystem;
 import akka.dispatch.Await;
 import akka.dispatch.Future;
 import akka.util.Duration;
@@ -22,6 +24,9 @@ import akka.util.Duration;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.google.common.base.Function;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 
 /**
  * @author ceefour
@@ -30,6 +35,7 @@ public class FbCli {
 	private transient Logger log = LoggerFactory.getLogger(FbCli.class);
 	@Inject @Parameters String[] args;
 	@Inject @Named("facebook_accessToken") String accessToken;
+	@Inject ActorSystem actorSystem;
 	
 	@Inject FriendListDownloader friendListDownloader;
 	@Inject FbGetUser getUserCmd;
@@ -65,8 +71,15 @@ public class FbCli {
 				mapper.writeValue(System.out, jsonNode);
 			} else if ("userlist-parse".equals(args[0])) {
 				// Parse user list from JSON files 
-				List<UserRef> userList = Await.result( userListParser.parse(new File("output/friends-1.js")), Duration.Inf() );
-				log.info("users: {}", userList);
+				String[] fileNames = Arrays.copyOfRange(args, 1, args.length);
+				List<File> files = Lists.transform(Arrays.asList(fileNames), new Function<String, File>() {
+					@Override
+					public File apply(String input) {
+						return new File(input);
+					}
+				});
+				List<UserRef> userList = Await.result(userListParser.parse(files), Duration.Inf());
+				log.info("Parsed {} users", userList.size());
 			} else if ("user-getmany".equals(args[0])) {
 				// Get many user 
 			}

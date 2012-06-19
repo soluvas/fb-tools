@@ -13,10 +13,13 @@ import akka.actor.ActorSystem;
 import akka.dispatch.Future;
 import akka.dispatch.Futures;
 import akka.dispatch.Mapper;
+import akka.japi.Function;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Lists;
 
 /**
  * @author ceefour
@@ -54,6 +57,25 @@ public class UserListParser {
 			@Override
 			public Future<List<UserRef>> apply(JsonNode jsonNode) {
 				return parse(jsonNode);
+			}
+		});
+	}
+	
+	public Future<List<UserRef>> parse(final List<File> files) {
+		// Parse user list from JSON files 
+		log.info("Parsing user list from {} files: {}", files.size(), files);
+		return Futures.traverse(files, new Function<File, Future<List<UserRef>>>() {
+			@Override
+			public Future<List<UserRef>> apply(File file) {
+				log.info("Parsing user list from {}", file);
+				return parse(file);
+			}
+		}, actorSystem.dispatcher()).map(new Mapper<Iterable<List<UserRef>>, List<UserRef>>() {
+			@Override
+			public List<UserRef> apply(Iterable<List<UserRef>> multiUserList) {
+				List<UserRef> userList = Lists.newArrayList(Iterables.concat(multiUserList));
+				log.info("Parsed {} users", userList.size());
+				return userList;
 			}
 		});
 	}
