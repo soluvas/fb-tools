@@ -38,9 +38,11 @@ public class FbCli {
 	private transient Logger log = LoggerFactory.getLogger(FbCli.class);
 	@Inject @Parameters String[] args;
 	@Inject @Named("facebook_accessToken") String accessToken;
-	@Inject FbGetUser getUserCmd;
 	@Inject HttpClient httpClient;
 	@Inject ActorSystem actorSystem;
+	
+	@Inject FbGetUser getUserCmd;
+	@Inject UserListParser userListParser;
 	
 	public Future<JsonNode> fetchFriendsPage(final URI uri) {
 		return Futures.future(new Callable<JsonNode>() {
@@ -118,6 +120,10 @@ public class FbCli {
 				ObjectMapper mapper = new ObjectMapper();
 				mapper.enable(SerializationFeature.INDENT_OUTPUT);
 				mapper.writeValue(System.out, jsonNode);
+			} else if ("userlist-parse".equals(args[0])) {
+				// Parse user list from JSON files 
+				List<UserRef> userList = Await.result( userListParser.parse(new File("output/friends-1.js")), Duration.Inf() );
+				log.info("users: {}", userList);
 			} else if ("user-getmany".equals(args[0])) {
 				// Get many user 
 			}
