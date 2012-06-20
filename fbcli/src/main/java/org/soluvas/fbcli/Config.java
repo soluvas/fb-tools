@@ -40,7 +40,7 @@ public class Config {
 	}
 	
 	@Produces @Singleton ActorSystem createActorSystem() {
-		return ActorSystem.create(Config.class.getSimpleName());
+		return ActorSystem.create("fbcli");
 	}
 	
 	public void destroyActorSystem(@Disposes @Singleton ActorSystem actorSystem) {
