@@ -164,7 +164,7 @@ public class FbCli {
 			} else if ("userphoto-get".equals(args[0])) {
 				// Download user photos where IDs/usernames are provided from command line arguments
 				String[] paths = Arrays.copyOfRange(args, 1, args.length);
-				Iterable<Future<File>> fileFutureIterables = Iterables.transform(Arrays.asList(paths), new Function<String, Future<File>>() {
+				Future<Iterable<File>> filesIterableFuture = Futures.traverse(Arrays.asList(paths), new akka.japi.Function<String, Future<File>>() {
 					@Override
 					public Future<File> apply(final String path) {
 						return photoDownloader.getNormalPictureUri(path)
@@ -176,8 +176,7 @@ public class FbCli {
 							}
 						});
 					}
-				});
-				Future<Iterable<File>> filesIterableFuture = Futures.sequence(fileFutureIterables, actorSystem.dispatcher());
+				}, actorSystem.dispatcher()); 
 				Iterable<File> files = Await.result(filesIterableFuture, Duration.Inf());
 				log.info("Downloaded {} photos.", Iterables.size(files));
 			} else if ("userphoto-getfromfiles".equals(args[0])) {
