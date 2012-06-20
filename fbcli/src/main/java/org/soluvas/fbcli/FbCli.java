@@ -131,12 +131,23 @@ public class FbCli {
 				Iterable<File> outFiles = Await.result(filesFuture, Duration.Inf());
 				log.info("Written {} user JSON files", Iterables.size(outFiles));
 			} else if ("userjson-tovcard".equals(args[0])) {
-				// Convert a single user JSON to vCard
-				String fileName = args[1];
-				File jsonFile = new File(fileName);
-				File vcardFile = new File(jsonFile.getParentFile(), "vcard/" + FilenameUtils.getBaseName(fileName) + ".vcf");
-				Future<Boolean> success = vcardConverter.toVcard(jsonFile, vcardFile);
-				Await.result(success, Duration.Inf());
+				// Convert a user JSON files to vCard
+				String[] fileNames = Arrays.copyOfRange(args, 1, args.length);
+				List<File> files = Lists.transform(Arrays.asList(fileNames), new Function<String, File>() {
+					@Override
+					public File apply(String input) {
+						return new File(input);
+					}
+				});
+				Future<Iterable<File>> vcardsFuture = Futures.traverse(files, new akka.japi.Function<File, Future<File>>() {
+					@Override
+					public Future<File> apply(File jsonFile) {
+						File vcardFile = new File(jsonFile.getParentFile(), "vcard/" + FilenameUtils.getBaseName(jsonFile.getName()) + ".vcf");
+						return vcardConverter.toVcard(jsonFile, vcardFile);
+					}
+				}, actorSystem.dispatcher());
+				Iterable<File> vcards = Await.result(vcardsFuture, Duration.Inf());
+				log.info("Saved {} vCard files", Iterables.size(vcards));
 			}
 		} catch (Exception ex) {
 			log.error("Error executing command", ex);
