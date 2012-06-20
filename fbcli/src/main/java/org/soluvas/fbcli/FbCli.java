@@ -192,14 +192,20 @@ public class FbCli {
 				Iterable<Future<File>> fileFutureIterables = Iterables.transform(userList, new Function<UserRef, Future<File>>() {
 					@Override
 					public Future<File> apply(final UserRef user) {
-						return photoDownloader.getNormalPictureUri(String.valueOf(user.getId()))
-								.flatMap(new Mapper<String, Future<File>>() {
-							@Override
-							public Future<File> apply(String uri) {
-								File outputFile = new File("output/photo/facebook_" + user.getId() + "_" + SlugUtils.generateId(user.getName(), 0)+ ".jpg");
-								return photoDownloader.download(uri, outputFile);
-							}
-						});
+						final File outputFile = new File("output/photo/facebook_" + user.getId() + "_" + SlugUtils.generateId(user.getName(), 0)+ ".jpg");
+						if (outputFile.exists()) {
+							log.warn("Photo for {} (#{}) already exists: {}", new Object[] {
+									user.getName(), user.getId(), outputFile });
+							return Futures.successful(outputFile, actorSystem.dispatcher()); 
+						} else {
+							return photoDownloader.getNormalPictureUri(String.valueOf(user.getId()))
+									.flatMap(new Mapper<String, Future<File>>() {
+								@Override
+								public Future<File> apply(String uri) {
+									return photoDownloader.download(uri, outputFile);
+								}
+							});
+						}
 					}
 				});
 				Future<Iterable<File>> filesIterableFuture = Futures.sequence(fileFutureIterables, actorSystem.dispatcher());
