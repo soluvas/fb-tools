@@ -6,6 +6,7 @@ import info.ineighborhood.cardme.vcard.VCardImpl;
 import info.ineighborhood.cardme.vcard.VCardVersion;
 import info.ineighborhood.cardme.vcard.types.AddressType;
 import info.ineighborhood.cardme.vcard.types.BeginType;
+import info.ineighborhood.cardme.vcard.types.BirthdayType;
 import info.ineighborhood.cardme.vcard.types.EndType;
 import info.ineighborhood.cardme.vcard.types.ExtendedType;
 import info.ineighborhood.cardme.vcard.types.FormattedNameType;
@@ -14,11 +15,18 @@ import info.ineighborhood.cardme.vcard.types.NicknameType;
 import info.ineighborhood.cardme.vcard.types.NoteType;
 import info.ineighborhood.cardme.vcard.types.PhotoType;
 import info.ineighborhood.cardme.vcard.types.URLType;
+import info.ineighborhood.cardme.vcard.types.parameters.AddressParameterType;
+import info.ineighborhood.cardme.vcard.types.parameters.ParameterTypeStyle;
 import info.ineighborhood.cardme.vcard.types.parameters.PhotoParameterType;
 
 import java.io.File;
 import java.net.URL;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.concurrent.Callable;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.inject.Inject;
 
@@ -43,6 +51,7 @@ public class VcardConverter {
 	private transient Logger log = LoggerFactory.getLogger(VcardConverter.class);
 	private ObjectMapper mapper = new ObjectMapper();
 	@Inject private ActorSystem actorSystem;
+	DateFormat fbDateFormat = new SimpleDateFormat("mm/dd/yyyy");
 	
 	public Future<File> toVcard(final File inputJson, final File outputVcard,
 			final File photoFile) {
@@ -64,13 +73,49 @@ public class VcardConverter {
 				}
 				if (json.has("gender"))
 						vcard.addExtendedType(new ExtendedType("X-GENDER", StringUtils.capitalize(json.get("gender").asText())));
+				if (json.has("birthday")) {
+					try {
+						Date birthDate = fbDateFormat.parse( json.get("birthday").asText() );
+						vcard.setBirthday(new BirthdayType(birthDate));
+					} catch (Exception e) {
+						log.warn("Invalid birthdate format for {}: {}", vcard.getFormattedName().getFormattedName(), json.get("birthday"));
+					}
+				}
 				if (json.has("bio")) {
 					// WARNING: Some characters are unreadable by Thunderbird
 					vcard.addNote(new NoteType(json.get("bio").asText()));
 				}
+				if (json.has("location")) {
+					AddressType address = new AddressType();
+					address.addAddressParameterType(AddressParameterType.INTL);
+					address.addAddressParameterType(AddressParameterType.POSTAL);
+					address.addAddressParameterType(AddressParameterType.PARCEL);
+					address.addAddressParameterType(AddressParameterType.WORK);
+					address.addAddressParameterType(AddressParameterType.PREF);
+					final String location = json.get("location").get("name").asText();
+					Matcher locationMatcher = Pattern.compile("(.*), (.+)").matcher(location);
+					if (locationMatcher.matches()) {
+						address.setLocality(locationMatcher.group(1));
+						address.setCountryName(locationMatcher.group(2));
+					} else {
+						address.setLocality(location);
+					}
+					vcard.addAddress(address);
+				}
 				if (json.has("hometown")) {
 					AddressType address = new AddressType();
-					address.setLocality(json.get("hometown").get("name").asText());
+					address.addAddressParameterType(AddressParameterType.INTL);
+					address.addAddressParameterType(AddressParameterType.POSTAL);
+					address.addAddressParameterType(AddressParameterType.PARCEL);
+					address.addAddressParameterType(AddressParameterType.HOME);
+					final String hometown = json.get("hometown").get("name").asText();
+					Matcher locationMatcher = Pattern.compile("(.*), (.+)").matcher(hometown);
+					if (locationMatcher.matches()) {
+						address.setLocality(locationMatcher.group(1));
+						address.setCountryName(locationMatcher.group(2));
+					} else {
+						address.setLocality(hometown);
+					}
 					vcard.addAddress(address);
 				}
 				if (json.has("link")) {
