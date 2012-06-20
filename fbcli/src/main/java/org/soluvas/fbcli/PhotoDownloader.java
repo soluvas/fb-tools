@@ -1,11 +1,13 @@
 package org.soluvas.fbcli;
 
+import java.io.File;
 import java.net.URI;
 import java.util.concurrent.Callable;
 
 import javax.inject.Inject;
 import javax.inject.Named;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -75,5 +77,25 @@ public class PhotoDownloader {
 				return uri.replace("_q.", "_n.");
 			}
 		});
+	}
+	
+	public Future<File> download(final String photoUri, final File outputFile) {
+		return Futures.future(new Callable<File>() {
+			@Override
+			public File call() throws Exception {
+				URI uri = URI.create(photoUri);
+				log.info("Download photo {}", uri);
+				HttpGet getReq = new HttpGet(uri);
+				HttpResponse resp = httpClient.execute(getReq);
+				try {
+					if (resp.getStatusLine().getStatusCode() != 200)
+						throw new RuntimeException("GET " + uri + " expects 200 but returned " + resp.getStatusLine());
+					FileUtils.copyInputStreamToFile(resp.getEntity().getContent(), outputFile);
+					return outputFile;
+				} finally {
+					HttpClientUtils.closeQuietly(resp);
+				}
+			}
+		}, actorSystem.dispatcher());
 	}
 }

@@ -157,7 +157,7 @@ public class FbCli {
 				Iterable<File> vcards = Await.result(vcardsFuture, Duration.Inf());
 				log.info("Saved {} vCard files", Iterables.size(vcards));
 			} else if ("userphoto-uri".equals(args[0])) {
-				// Convert a user JSON files to vCard
+				// Get normal photo URI for user
 				String[] paths = Arrays.copyOfRange(args, 1, args.length);
 				Future<Iterable<String>> photoUrisFuture = Futures.traverse(Arrays.asList(paths), new akka.japi.Function<String, Future<String>>() {
 					@Override
@@ -167,6 +167,25 @@ public class FbCli {
 				}, actorSystem.dispatcher());
 				Iterable<String> photoUris = Await.result(photoUrisFuture, Duration.Inf());
 				log.info("Photo URIs: {}", photoUris);
+			} else if ("userphoto-get".equals(args[0])) {
+				// Download user photos where IDs/usernames are provided from command line arguments
+				String[] paths = Arrays.copyOfRange(args, 1, args.length);
+				Iterable<Future<File>> fileFutureIterables = Iterables.transform(Arrays.asList(paths), new Function<String, Future<File>>() {
+					@Override
+					public Future<File> apply(final String path) {
+						return photoDownloader.getNormalPictureUri(path)
+								.flatMap(new Mapper<String, Future<File>>() {
+							@Override
+							public Future<File> apply(String uri) {
+								File outputFile = new File("output/photo/facebook_" + path + ".jpg");
+								return photoDownloader.download(uri, outputFile);
+							}
+						});
+					}
+				});
+				Future<Iterable<File>> filesIterableFuture = Futures.sequence(fileFutureIterables, actorSystem.dispatcher());
+				Iterable<File> files = Await.result(filesIterableFuture, Duration.Inf());
+				log.info("Downloaded {} photos.", Iterables.size(files));
 			}
 		} catch (Exception ex) {
 			log.error("Error executing command", ex);
