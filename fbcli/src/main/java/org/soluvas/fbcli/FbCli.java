@@ -39,14 +39,22 @@ import com.google.common.collect.Lists;
 public class FbCli {
 	private transient Logger log = LoggerFactory.getLogger(FbCli.class);
 	@Inject @Parameters String[] args;
-	@Inject @Named("facebook_accessToken") String accessToken;
-	@Inject ActorSystem actorSystem;
+	@Inject @Named("facebook_accessToken")
+	String accessToken;
+	@Inject 
+	ActorSystem actorSystem;
 	private ObjectMapper mapper;
 	
-	@Inject FriendListDownloader friendListDownloader;
-	@Inject FbGetUser getUserCmd;
-	@Inject UserListParser userListParser;
-	@Inject VcardConverter vcardConverter;
+	@Inject 
+	FriendListDownloader friendListDownloader;
+	@Inject 
+	FbGetUser getUserCmd;
+	@Inject 
+	UserListParser userListParser;
+	@Inject 
+	VcardConverter vcardConverter;
+	@Inject 
+	PhotoDownloader photoDownloader;
 	
 	@PostConstruct public void init() {
 		mapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
@@ -148,10 +156,23 @@ public class FbCli {
 				}, actorSystem.dispatcher());
 				Iterable<File> vcards = Await.result(vcardsFuture, Duration.Inf());
 				log.info("Saved {} vCard files", Iterables.size(vcards));
+			} else if ("userphoto-uri".equals(args[0])) {
+				// Convert a user JSON files to vCard
+				String[] paths = Arrays.copyOfRange(args, 1, args.length);
+				Future<Iterable<String>> photoUrisFuture = Futures.traverse(Arrays.asList(paths), new akka.japi.Function<String, Future<String>>() {
+					@Override
+					public Future<String> apply(String path) {
+						return photoDownloader.getNormalPictureUri(path);
+					}
+				}, actorSystem.dispatcher());
+				Iterable<String> photoUris = Await.result(photoUrisFuture, Duration.Inf());
+				log.info("Photo URIs: {}", photoUris);
 			}
 		} catch (Exception ex) {
 			log.error("Error executing command", ex);
 			throw new RuntimeException("Error executing command", ex);
+		} finally {
+			actorSystem.shutdown();
 		}
 	}
 }
