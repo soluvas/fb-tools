@@ -12,6 +12,7 @@ import javax.inject.Inject;
 import javax.inject.Named;
 
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.utils.URIBuilder;
 import org.jboss.weld.environment.se.bindings.Parameters;
 import org.jboss.weld.environment.se.events.ContainerInitialized;
@@ -99,7 +100,7 @@ public class FbCli {
 				});
 				List<UserRef> userList = Await.result(userListParser.parse(files), Duration.Inf());
 				log.info("Parsed {} users", userList.size());
-			} else if ("user-getmanyfromfiles".equals(args[0])) {
+			} else if ("user-getfromfiles".equals(args[0])) {
 				// Get many user, list of user IDs parsed from JSON files 
 				// Parse user list from JSON files 
 				String[] fileNames = Arrays.copyOfRange(args, 1, args.length);
@@ -132,6 +133,7 @@ public class FbCli {
 				}, actorSystem.dispatcher());
 				Iterable<File> outFiles = Await.result(filesFuture, Duration.Inf());
 				log.info("Written {} user JSON files", Iterables.size(outFiles));
+//				log.info("Written user JSON files: {}", StringUtils.join(outFiles, ' '));
 			} else if ("userjson-tovcard".equals(args[0])) {
 				// Convert a user JSON files to vCard
 				String[] fileNames = Arrays.copyOfRange(args, 1, args.length);
