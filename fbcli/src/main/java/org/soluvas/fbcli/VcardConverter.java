@@ -16,14 +16,12 @@ import info.ineighborhood.cardme.vcard.types.NoteType;
 import info.ineighborhood.cardme.vcard.types.PhotoType;
 import info.ineighborhood.cardme.vcard.types.URLType;
 import info.ineighborhood.cardme.vcard.types.parameters.AddressParameterType;
-import info.ineighborhood.cardme.vcard.types.parameters.ParameterTypeStyle;
 import info.ineighborhood.cardme.vcard.types.parameters.PhotoParameterType;
 
 import java.io.File;
 import java.net.URL;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.concurrent.Callable;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -32,6 +30,8 @@ import javax.inject.Inject;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormatterBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +51,6 @@ public class VcardConverter {
 	private transient Logger log = LoggerFactory.getLogger(VcardConverter.class);
 	private ObjectMapper mapper = new ObjectMapper();
 	@Inject private ActorSystem actorSystem;
-	DateFormat fbDateFormat = new SimpleDateFormat("mm/dd/yyyy");
 	
 	public Future<File> toVcard(final File inputJson, final File outputVcard,
 			final File photoFile) {
@@ -74,11 +73,24 @@ public class VcardConverter {
 				if (json.has("gender"))
 						vcard.addExtendedType(new ExtendedType("X-GENDER", StringUtils.capitalize(json.get("gender").asText())));
 				if (json.has("birthday")) {
+					final String birthday = json.get("birthday").asText();
 					try {
-						Date birthDate = fbDateFormat.parse( json.get("birthday").asText() );
-						vcard.setBirthday(new BirthdayType(birthDate));
+						DateTime birthDate = DateTime.parse(birthday,
+								new DateTimeFormatterBuilder().appendMonthOfYear(2).appendLiteral('/')
+								.appendDayOfMonth(2).appendLiteral('/').appendYear(4, 4).toFormatter());
+						vcard.setBirthday(new BirthdayType(birthDate.toGregorianCalendar()));
 					} catch (Exception e) {
-						log.warn("Invalid birthdate format for {}: {}", vcard.getFormattedName().getFormattedName(), json.get("birthday"));
+						Matcher partialMatcher = Pattern.compile("(\\d+)\\/(\\d+)").matcher(birthday);
+						if (partialMatcher.matches()) {
+							GregorianCalendar calendar = new GregorianCalendar();
+							calendar.clear();
+							calendar.set(Calendar.MONTH, Integer.valueOf(partialMatcher.group(1)) - 1);
+							calendar.set(Calendar.DAY_OF_MONTH, Integer.valueOf(partialMatcher.group(2)));
+							calendar.set(Calendar.YEAR, 1);
+							vcard.setBirthday(new BirthdayType(calendar));
+						} else {
+							log.warn("Invalid birthdate format for {}: {} - {}", new Object[] { vcard.getFormattedName().getFormattedName(), birthday, e });
+						}
 					}
 				}
 				if (json.has("bio")) {
