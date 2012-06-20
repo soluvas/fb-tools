@@ -17,7 +17,6 @@ import info.ineighborhood.cardme.vcard.types.URLType;
 import info.ineighborhood.cardme.vcard.types.parameters.PhotoParameterType;
 
 import java.io.File;
-import java.net.URI;
 import java.net.URL;
 import java.util.concurrent.Callable;
 
@@ -45,7 +44,8 @@ public class VcardConverter {
 	private ObjectMapper mapper = new ObjectMapper();
 	@Inject private ActorSystem actorSystem;
 	
-	public Future<File> toVcard(final File inputJson, final File outputVcard) {
+	public Future<File> toVcard(final File inputJson, final File outputVcard,
+			final File photoFile) {
 		return Futures.future(new Callable<File>() {
 			@Override
 			public File call() throws Exception {
@@ -55,10 +55,12 @@ public class VcardConverter {
 				vcard.setFormattedName(new FormattedNameType(json.get("name").asText()));
 				String firstAndMiddleName = json.get("first_name").asText() + ( json.has("middle_name") ? " " + json.get("middle_name").asText() : "" );
 				vcard.setName(new NameType(json.get("last_name").asText(), firstAndMiddleName));
+				vcard.addExtendedType(new ExtendedType("X-FACEBOOK-ID", json.get("id").asText()));
 				if (json.has("username")) {
 					NicknameType nickname = new NicknameType();
 					nickname.addNickname(json.get("username").asText());
 					vcard.setNicknames(nickname);
+					vcard.addExtendedType(new ExtendedType("X-FACEBOOK-USERNAME", json.get("username").asText()));
 				}
 				if (json.has("gender"))
 						vcard.addExtendedType(new ExtendedType("X-GENDER", StringUtils.capitalize(json.get("gender").asText())));
@@ -74,13 +76,20 @@ public class VcardConverter {
 				if (json.has("link")) {
 					final String linkUri = json.get("link").asText();
 					vcard.addURL(new URLType(new URL(linkUri)));
-					vcard.addPhoto(new PhotoType(URI.create(linkUri + "/picture"), EncodingType.BINARY, PhotoParameterType.VALUE));
+					//vcard.addPhoto(new PhotoType(URI.create(linkUri + "/picture"), EncodingType.SEVEN_BIT, PhotoParameterType.VALUE));
+				}
+				if (photoFile != null) {
+					// WARNING: Thunderbird cannot read vCard 3.0 with base64-encoded photo :(
+					log.info("Reading photo {} for {} {}", new Object[] {
+							photoFile, vcard.getFormattedName().getFormattedName() });
+					byte[] photoData = FileUtils.readFileToByteArray(photoFile);
+					vcard.addPhoto(new PhotoType(photoData, EncodingType.BASE64, PhotoParameterType.ENCODING));
 				}
 				vcard.setEnd(new EndType());
 				
 				VCardWriter vCardWriter = new VCardWriter(VCardVersion.V3_0);
 				vCardWriter.setVCard(vcard);
-				log.info("Writing vCard for {} {} to {}", new Object[] { vcard.getName().getGivenName(), vcard.getName().getFamilyName(),
+				log.info("Writing vCard for {} to {}", new Object[] { vcard.getFormattedName().getFormattedName(),
 						outputVcard });
 				FileUtils.write(outputVcard, vCardWriter.buildVCardString());
 				// You can't have email :(

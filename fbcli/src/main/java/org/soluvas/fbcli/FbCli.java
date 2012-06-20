@@ -135,7 +135,7 @@ public class FbCli {
 				log.info("Written {} user JSON files", Iterables.size(outFiles));
 //				log.info("Written user JSON files: {}", StringUtils.join(outFiles, ' '));
 			} else if ("userjson-tovcard".equals(args[0])) {
-				// Convert a user JSON files to vCard
+				// Convert a user JSON files to vCard without photo
 				String[] fileNames = Arrays.copyOfRange(args, 1, args.length);
 				List<File> files = Lists.transform(Arrays.asList(fileNames), new Function<String, File>() {
 					@Override
@@ -147,7 +147,31 @@ public class FbCli {
 					@Override
 					public Future<File> apply(File jsonFile) {
 						File vcardFile = new File(jsonFile.getParentFile(), "vcard/" + FilenameUtils.getBaseName(jsonFile.getName()) + ".vcf");
-						return vcardConverter.toVcard(jsonFile, vcardFile);
+						return vcardConverter.toVcard(jsonFile, vcardFile, null);
+					}
+				}, actorSystem.dispatcher());
+				Iterable<File> vcards = Await.result(vcardsFuture, Duration.Inf());
+				log.info("Saved {} vCard files", Iterables.size(vcards));
+			} else if ("userjson-tovcardphoto".equals(args[0])) {
+				// Convert a user JSON files to vCard with photo
+				String[] fileNames = Arrays.copyOfRange(args, 1, args.length);
+				List<File> files = Lists.transform(Arrays.asList(fileNames), new Function<String, File>() {
+					@Override
+					public File apply(String input) {
+						return new File(input);
+					}
+				});
+				Future<Iterable<File>> vcardsFuture = Futures.traverse(files, new akka.japi.Function<File, Future<File>>() {
+					@Override
+					public Future<File> apply(File jsonFile) {
+						File photoFile = new File(jsonFile.getParentFile(), "photo/" + FilenameUtils.getBaseName(jsonFile.getName()) + ".jpg");
+						File vcardFile = new File(jsonFile.getParentFile(), "vcard/" + FilenameUtils.getBaseName(jsonFile.getName()) + ".vcf");
+						if (photoFile.exists()) {
+							return vcardConverter.toVcard(jsonFile, vcardFile, photoFile);
+						} else {
+							log.warn("Photo file {} does not exist", photoFile);
+							return vcardConverter.toVcard(jsonFile, vcardFile, null);
+						}
 					}
 				}, actorSystem.dispatcher());
 				Iterable<File> vcards = Await.result(vcardsFuture, Duration.Inf());
