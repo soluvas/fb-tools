@@ -103,13 +103,7 @@ public class FbCli {
 				// Get many user, list of user IDs parsed from JSON files 
 				// Parse user list from JSON files 
 				String[] fileNames = Arrays.copyOfRange(args, 1, args.length);
-				List<File> files = Lists.transform(Arrays.asList(fileNames), new Function<String, File>() {
-					@Override
-					public File apply(String input) {
-						return new File(input);
-					}
-				});
-				Future<List<UserRef>> userListFuture = userListParser.parse(files);
+				Future<List<UserRef>> userListFuture = userListParser.parseNames(Arrays.asList(fileNames));
 				List<UserRef> userList = Await.result(userListFuture, Duration.Inf());
 				log.info("Parsed {} users", userList.size());
 				
@@ -178,6 +172,31 @@ public class FbCli {
 							@Override
 							public Future<File> apply(String uri) {
 								File outputFile = new File("output/photo/facebook_" + path + ".jpg");
+								return photoDownloader.download(uri, outputFile);
+							}
+						});
+					}
+				});
+				Future<Iterable<File>> filesIterableFuture = Futures.sequence(fileFutureIterables, actorSystem.dispatcher());
+				Iterable<File> files = Await.result(filesIterableFuture, Duration.Inf());
+				log.info("Downloaded {} photos.", Iterables.size(files));
+			} else if ("userphoto-getfromfiles".equals(args[0])) {
+				// Download user photos where IDs/usernames are provided from JSON files
+				
+				// Parse user list from JSON files 
+				String[] fileNames = Arrays.copyOfRange(args, 1, args.length);
+				Future<List<UserRef>> userListFuture = userListParser.parseNames(Arrays.asList(fileNames));
+				List<UserRef> userList = Await.result(userListFuture, Duration.Inf());
+				log.info("Parsed {} users", userList.size());
+				
+				Iterable<Future<File>> fileFutureIterables = Iterables.transform(userList, new Function<UserRef, Future<File>>() {
+					@Override
+					public Future<File> apply(final UserRef user) {
+						return photoDownloader.getNormalPictureUri(String.valueOf(user.getId()))
+								.flatMap(new Mapper<String, Future<File>>() {
+							@Override
+							public Future<File> apply(String uri) {
+								File outputFile = new File("output/photo/facebook_" + user.getId() + "_" + SlugUtils.generateId(user.getName(), 0)+ ".jpg");
 								return photoDownloader.download(uri, outputFile);
 							}
 						});

@@ -79,4 +79,15 @@ public class UserListParser {
 			}
 		});
 	}
+	
+	public Future<List<UserRef>> parseNames(final List<String> fileNames) {
+		List<File> files = Lists.transform(fileNames, new com.google.common.base.Function<String, File>() {
+			@Override
+			public File apply(String input) {
+				return new File(input);
+			}
+		});
+		return parse(files);
+	}
+	
 }
