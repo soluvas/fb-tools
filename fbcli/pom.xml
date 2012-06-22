@@ -122,7 +122,7 @@
 			<url>http://repository.jboss.org/nexus/content/groups/public</url>
 			<snapshots>
 				<enabled>false</enabled>
-			<snapshots>
+			</snapshots>
 		</repository>
 		<repository>
 			<id>typesafe</id>
@@ -130,7 +130,7 @@
 			<url>http://repo.typesafe.com/typesafe/releases/</url>
 			<snapshots>
 				<enabled>false</enabled>
-			<snapshots>
+			</snapshots>
 		</repository>
 	</repositories>
 
