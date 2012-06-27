@@ -1,23 +1,5 @@
 package org.soluvas.fbcli;
 
-import info.ineighborhood.cardme.io.VCardWriter;
-import info.ineighborhood.cardme.vcard.EncodingType;
-import info.ineighborhood.cardme.vcard.VCardImpl;
-import info.ineighborhood.cardme.vcard.VCardVersion;
-import info.ineighborhood.cardme.vcard.types.AddressType;
-import info.ineighborhood.cardme.vcard.types.BeginType;
-import info.ineighborhood.cardme.vcard.types.BirthdayType;
-import info.ineighborhood.cardme.vcard.types.EndType;
-import info.ineighborhood.cardme.vcard.types.ExtendedType;
-import info.ineighborhood.cardme.vcard.types.FormattedNameType;
-import info.ineighborhood.cardme.vcard.types.NameType;
-import info.ineighborhood.cardme.vcard.types.NicknameType;
-import info.ineighborhood.cardme.vcard.types.NoteType;
-import info.ineighborhood.cardme.vcard.types.PhotoType;
-import info.ineighborhood.cardme.vcard.types.URLType;
-import info.ineighborhood.cardme.vcard.types.parameters.AddressParameterType;
-import info.ineighborhood.cardme.vcard.types.parameters.PhotoParameterType;
-
 import java.io.File;
 import java.net.URL;
 import java.util.Calendar;
@@ -27,6 +9,24 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.inject.Inject;
+
+import net.sourceforge.cardme.io.VCardWriter;
+import net.sourceforge.cardme.vcard.EncodingType;
+import net.sourceforge.cardme.vcard.VCardImpl;
+import net.sourceforge.cardme.vcard.VCardVersion;
+import net.sourceforge.cardme.vcard.types.AddressType;
+import net.sourceforge.cardme.vcard.types.BeginType;
+import net.sourceforge.cardme.vcard.types.BirthdayType;
+import net.sourceforge.cardme.vcard.types.EndType;
+import net.sourceforge.cardme.vcard.types.ExtendedType;
+import net.sourceforge.cardme.vcard.types.FormattedNameType;
+import net.sourceforge.cardme.vcard.types.NameType;
+import net.sourceforge.cardme.vcard.types.NicknameType;
+import net.sourceforge.cardme.vcard.types.NoteType;
+import net.sourceforge.cardme.vcard.types.PhotoType;
+import net.sourceforge.cardme.vcard.types.URLType;
+import net.sourceforge.cardme.vcard.types.parameters.AddressParameterType;
+import net.sourceforge.cardme.vcard.types.parameters.PhotoParameterType;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
