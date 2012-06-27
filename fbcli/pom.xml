@@ -113,8 +113,8 @@
 
 	<repositories>
 		<repository>
-			<id>JBOSS_NEXUS</id>
-			<url>http://repository.jboss.org/nexus/content/groups/public</url>
+			<id>soluvas.org.thirdparty</id>
+			<url>http://maven.soluvas.org/thirdparty</url>
 			<snapshots>
 				<enabled>false</enabled>
 			</snapshots>
@@ -123,6 +123,13 @@
 			<id>typesafe</id>
 			<name>Typesafe Repository</name>
 			<url>http://repo.typesafe.com/typesafe/releases/</url>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+		</repository>
+		<repository>
+			<id>JBOSS_NEXUS</id>
+			<url>http://repository.jboss.org/nexus/content/groups/public</url>
 			<snapshots>
 				<enabled>false</enabled>
 			</snapshots>
