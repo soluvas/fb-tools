@@ -84,13 +84,14 @@ public class PhotoDownloader {
 			@Override
 			public File call() throws Exception {
 				URI uri = URI.create(photoUri);
-				log.info("Download photo {}", uri);
+				log.debug("Downloading photo {} to {}", uri, outputFile);
 				HttpGet getReq = new HttpGet(uri);
 				HttpResponse resp = httpClient.execute(getReq);
 				try {
 					if (resp.getStatusLine().getStatusCode() != 200)
 						throw new RuntimeException("GET " + uri + " expects 200 but returned " + resp.getStatusLine());
 					FileUtils.copyInputStreamToFile(resp.getEntity().getContent(), outputFile);
+					log.info("Downloaded photo {} to {}", uri, outputFile);
 					return outputFile;
 				} finally {
 					HttpClientUtils.closeQuietly(resp);

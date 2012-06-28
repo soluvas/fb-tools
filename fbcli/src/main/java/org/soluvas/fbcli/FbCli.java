@@ -2,6 +2,7 @@ package org.soluvas.fbcli;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
@@ -27,12 +28,16 @@ import akka.dispatch.Await;
 import akka.dispatch.Future;
 import akka.dispatch.Futures;
 import akka.dispatch.Mapper;
+import akka.dispatch.OnSuccess;
 import akka.util.Duration;
 
+import com.fasterxml.jackson.core.JsonGenerationException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 
@@ -91,6 +96,33 @@ public class FbCli {
 				ObjectMapper mapper = new ObjectMapper();
 				mapper.enable(SerializationFeature.INDENT_OUTPUT);
 				mapper.writeValue(System.out, jsonNode);
+			} else if ("user-download".equals(args[0])) {
+				// Get user IDs from command line arguments and save to file 
+				List<String> paths = ImmutableList.copyOf( Arrays.copyOfRange(args, 1, args.length) );
+				final ObjectMapper mapper = new ObjectMapper();
+				mapper.enable(SerializationFeature.INDENT_OUTPUT);
+				Future<Iterable<JsonNode>> jsonIterFuture = Futures.traverse(paths, new akka.japi.Function<String, Future<JsonNode>>() {
+					@Override
+					public Future<JsonNode> apply(String path) {
+						return getUserCmd.getUserByPath(path).onSuccess(new OnSuccess<JsonNode>() {
+							@Override
+							public void onSuccess(JsonNode jsonNode) {
+								String fbId = jsonNode.get("id").asText();
+								String name = jsonNode.get("name").asText();
+								final File file = new File("output", "facebook_" + fbId + "_" +
+										SlugUtils.generateId(name) + ".js");
+								log.info("Saving to {}", file);
+								try {
+									mapper.writeValue(file, jsonNode);
+								} catch (Exception e) {
+									throw new RuntimeException("Cannot write " + file, e);
+								}
+							}
+						});
+					}
+				}, actorSystem.dispatcher());
+				List<JsonNode> jsonNode = ImmutableList.copyOf( Await.result( jsonIterFuture, Duration.Inf() ) );
+				log.info("Downloaded {} user JSON files", jsonNode.size());
 			} else if ("userlist-parse".equals(args[0])) {
 				// Parse user list from JSON files 
 				String[] fileNames = Arrays.copyOfRange(args, 1, args.length);
