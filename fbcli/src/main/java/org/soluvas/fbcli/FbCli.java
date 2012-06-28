@@ -5,14 +5,16 @@ import java.io.FileWriter;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import javax.enterprise.event.Observes;
 import javax.inject.Inject;
 import javax.inject.Named;
 
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.utils.URIBuilder;
 import org.jboss.weld.environment.se.bindings.Parameters;
 import org.jboss.weld.environment.se.events.ContainerInitialized;
@@ -240,8 +242,18 @@ public class FbCli {
 		} catch (Exception ex) {
 			log.error("Error executing command", ex);
 			throw new RuntimeException("Error executing command", ex);
-		} finally {
-			actorSystem.shutdown();
 		}
 	}
+
+	@PreDestroy public void destroy() throws InterruptedException {
+		log.info("Bye byeeeeee");
+		Executors.newSingleThreadScheduledExecutor().schedule(new Runnable() { 
+			@Override
+			public void run() {
+				log.info("Exiting");
+				System.exit(0);
+			}
+		}, 50, TimeUnit.MILLISECONDS);
+	}
+	
 }
