@@ -4,10 +4,13 @@ import java.io.File;
 import java.net.URL;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 
 import net.sourceforge.cardme.io.VCardWriter;
@@ -24,6 +27,7 @@ import net.sourceforge.cardme.vcard.types.NameType;
 import net.sourceforge.cardme.vcard.types.NicknameType;
 import net.sourceforge.cardme.vcard.types.NoteType;
 import net.sourceforge.cardme.vcard.types.PhotoType;
+import net.sourceforge.cardme.vcard.types.UIDType;
 import net.sourceforge.cardme.vcard.types.URLType;
 import net.sourceforge.cardme.vcard.types.parameters.AddressParameterType;
 import net.sourceforge.cardme.vcard.types.parameters.PhotoParameterType;
@@ -34,6 +38,7 @@ import org.joda.time.DateTime;
 import org.joda.time.format.DateTimeFormatterBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.soluvas.slug.SlugUtils;
 
 import akka.actor.ActorSystem;
 import akka.dispatch.Future;
@@ -41,6 +46,7 @@ import akka.dispatch.Futures;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Predicate;
 
 /**
  * Convert Facebook JSON to vCard.
@@ -52,17 +58,44 @@ public class VcardConverter {
 	private ObjectMapper mapper = new ObjectMapper();
 	@Inject private ActorSystem actorSystem;
 	
+	private Set<String> personIds  = new ConcurrentSkipListSet<String>();
+	private Set<String> screenNames = new ConcurrentSkipListSet<String>();
+	
 	public Future<File> toVcard(final File inputJson, final File outputVcard,
 			final File photoFile) {
 		return Futures.future(new Callable<File>() {
 			@Override
 			public File call() throws Exception {
 				JsonNode json = mapper.readTree(inputJson);
+				
+				// Generate ID and screenName
+				final String name = json.get("name").asText();
+				final String personId = SlugUtils.generateValidId(name, new Predicate<String>() {
+					@Override
+					public boolean apply(@Nullable String id) {
+						return !personIds.contains(id);
+					}
+				});
+				final String screenName = SlugUtils.generateValidScreenName(name, new Predicate<String>() {
+					@Override
+					public boolean apply(@Nullable String screenName) {
+						return !screenNames.contains(screenName);
+					}
+				});
+				
+				// Put the ID and screenName to Set so it won't get reused
+				personIds.add(personId);
+				screenNames.add(screenName);
+				
 				VCardImpl vcard = new VCardImpl();
 				vcard.setBegin(new BeginType());
-				vcard.setFormattedName(new FormattedNameType(json.get("name").asText()));
+				vcard.setFormattedName(new FormattedNameType(name));
 				String firstAndMiddleName = json.get("first_name").asText() + ( json.has("middle_name") ? " " + json.get("middle_name").asText() : "" );
 				vcard.setName(new NameType(json.get("last_name").asText(), firstAndMiddleName));
+				
+				vcard.setUID(new UIDType(personId));
+				vcard.addExtendedType(new ExtendedType("X-SCREENNAME", screenName));
+				
 				vcard.addExtendedType(new ExtendedType("X-FACEBOOK-ID", json.get("id").asText()));
 				if (json.has("username")) {
 					NicknameType nickname = new NicknameType();
