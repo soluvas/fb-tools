@@ -1,5 +1,6 @@
 package org.soluvas.fbcli;
 
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.Properties;
 
@@ -30,7 +31,7 @@ public class Config {
 	
 	@PostConstruct public void init() throws IOException {
 		Properties props = new Properties();
-		props.load(getClass().getResourceAsStream("/fbcli.properties"));
+		props.load(new FileReader("fbcli.properties"));
 		facebookAccessToken = props.getProperty("facebook.accessToken");
 		
 		// this works: 
