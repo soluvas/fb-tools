@@ -3,8 +3,9 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.soluvas.fbtools</groupId>
-	<artifactId>fbcli</artifactId>
+	<artifactId>org.soluvas.fbtools.fbcli</artifactId>
 	<version>1.0.0-SNAPSHOT</version>
+	<packaging>bundle</packaging>
 	<properties>
 		<logback.version>1.0.3</logback.version>
 		<slf4j.version>1.6.4</slf4j.version>
@@ -118,10 +119,10 @@
 
 	<repositories>
 		<repository>
-			<id>soluvas.org.thirdparty</id>
-			<url>http://maven.soluvas.org/thirdparty</url>
+			<id>sonatype-nexus</id>
+			<url>https://oss.sonatype.org/content/groups/public/</url>
 			<snapshots>
-				<enabled>false</enabled>
+				<enabled>true</enabled>
 			</snapshots>
 		</repository>
 		<repository>
@@ -154,18 +155,39 @@
 			</plugin>
 			
 			<plugin>
+				<groupId>org.apache.felix</groupId>
+				<artifactId>maven-bundle-plugin</artifactId>
+				<version>2.3.7</version>
+				<extensions>true</extensions>
+				<configuration>
+					<instructions>
+						<Bundle-SymbolicName>${project.artifactId}</Bundle-SymbolicName>
+					</instructions>
+				</configuration>
+	<!-- 			<executions> -->
+	<!-- 				<execution> -->
+	<!-- 					<id>manifest</id> -->
+	<!-- 					<phase>process-classes</phase> -->
+	<!-- 					<goals> -->
+	<!-- 						<goal>manifest</goal> -->
+	<!-- 					</goals> -->
+	<!-- 				</execution> -->
+	<!-- 			</executions> -->
+			</plugin>
+
+			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-assembly-plugin</artifactId>
 				<version>2.3</version>
 				<configuration>
-					<descriptorRefs>
-						<descriptorRef>bin</descriptorRef>
-					</descriptorRefs>
+					<descriptors>
+						<descriptor>src/main/assembly/fb-cli.xml</descriptor>
+					</descriptors>
 				</configuration>
 				<executions>
 					<execution>
-						<id>make-assembly</id> <!-- this is used for inheritance merges -->
-						<phase>package</phase> <!-- bind to the packaging phase -->
+						<id>make-assembly</id>
+						<phase>package</phase>
 						<goals>
 							<goal>single</goal>
 						</goals>
@@ -175,4 +197,16 @@
 
 		</plugins>
 	</build>
+	
+	<distributionManagement>
+		<snapshotRepository>
+			<id>sonatype-nexus-snapshots</id>
+			<url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+		</snapshotRepository>
+		<repository>
+			<id>sonatype-nexus-staging</id>
+			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+		</repository>
+	</distributionManagement>
+	
 </project>
