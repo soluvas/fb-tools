@@ -20,4 +20,6 @@ h2. Convert User JSON Files to vCard (WITH Photo) Files
 
 bc. ./fbcli.sh userjson-tovcardphoto output/facebook_1225303239_santi_mutiara_sari.js output/facebook_1782503068_fitrya_murbarani.js
 
+Many files:
 
+bc. ./fbcli.sh userjson-tovcardphoto output/facebook*.js
