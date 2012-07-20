@@ -1,6 +1,3 @@
-/**
- * 
- */
 package org.soluvas.fbcli;
 
 import java.net.URI;

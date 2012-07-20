@@ -2,7 +2,6 @@ package org.soluvas.fbcli;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
@@ -31,8 +30,6 @@ import akka.dispatch.Mapper;
 import akka.dispatch.OnSuccess;
 import akka.util.Duration;
 
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -47,22 +44,15 @@ import com.google.common.collect.Lists;
 public class FbCli {
 	private transient Logger log = LoggerFactory.getLogger(FbCli.class);
 	@Inject @Parameters String[] args;
-	@Inject @Named("facebook_accessToken")
-	String accessToken;
-	@Inject 
-	ActorSystem actorSystem;
+	@Inject @Named("facebook_accessToken") String accessToken;
+	@Inject ActorSystem actorSystem;
 	private ObjectMapper mapper;
 	
-	@Inject 
-	FriendListDownloader friendListDownloader;
-	@Inject 
-	FbGetUser getUserCmd;
-	@Inject 
-	UserListParser userListParser;
-	@Inject 
-	VcardConverter vcardConverter;
-	@Inject 
-	PhotoDownloader photoDownloader;
+	@Inject FriendListDownloader friendListDownloader;
+	@Inject FbGetUser getUserCmd;
+	@Inject UserListParser userListParser;
+	@Inject VcardConverter vcardConverter;
+	@Inject PhotoDownloader photoDownloader;
 	
 	@PostConstruct public void init() {
 		mapper = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
@@ -99,7 +89,6 @@ public class FbCli {
 			} else if ("user-download".equals(args[0])) {
 				// Get user IDs from command line arguments and save to file 
 				List<String> paths = ImmutableList.copyOf( Arrays.copyOfRange(args, 1, args.length) );
-				final ObjectMapper mapper = new ObjectMapper();
 				mapper.enable(SerializationFeature.INDENT_OUTPUT);
 				Future<Iterable<JsonNode>> jsonIterFuture = Futures.traverse(paths, new akka.japi.Function<String, Future<JsonNode>>() {
 					@Override
