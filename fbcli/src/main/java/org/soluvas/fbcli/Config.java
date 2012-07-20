@@ -13,7 +13,8 @@ import javax.inject.Named;
 import javax.inject.Singleton;
 
 import org.apache.http.client.HttpClient;
-import org.apache.http.impl.client.ContentEncodingHttpClient;
+import org.apache.http.impl.client.DecompressingHttpClient;
+import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
 import org.apache.http.params.BasicHttpParams;
 
@@ -33,11 +34,7 @@ public class Config {
 		Properties props = new Properties();
 		props.load(new FileReader("fbcli.properties"));
 		facebookAccessToken = props.getProperty("facebook.accessToken");
-		
-		// this works: 
-		httpClient = new ContentEncodingHttpClient(new PoolingClientConnectionManager(), new BasicHttpParams());
-		// this doesn't work:
-//		 HttpClient httpClient = new DecompressingHttpClient(new DefaultHttpClient(new PoolingClientConnectionManager(), new BasicHttpParams()));
+		httpClient = new DecompressingHttpClient(new DefaultHttpClient(new PoolingClientConnectionManager(), new BasicHttpParams()));
 	}
 	
 	@Produces @Singleton ActorSystem createActorSystem() {
@@ -45,8 +42,8 @@ public class Config {
 	}
 	
 	public void destroyActorSystem(@Disposes @Singleton ActorSystem actorSystem) {
-		actorSystem = null;
 		actorSystem.shutdown();
+		actorSystem.awaitTermination();
 	}
 	
 	@PreDestroy public void destroy() {
