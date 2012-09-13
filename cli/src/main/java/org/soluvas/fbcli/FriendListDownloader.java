@@ -25,8 +25,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.collect.Lists;
 
 /**
+ * Download list of friends.
  * @author ceefour
- *
  */
 public class FriendListDownloader {
 
@@ -34,6 +34,12 @@ public class FriendListDownloader {
 	@Inject HttpClient httpClient;
 	@Inject ActorSystem actorSystem;
 	
+	/**
+	 * Fetch a page of friend list as JSON Node. Paging metadata is returned, but not processed.
+	 * 
+	 * @param uri Example: https://graph.facebook.com/me/friends
+	 * @return JSON Node containing first page of friend list.
+	 */
 	public Future<JsonNode> fetchFriendsPage(final URI uri) {
 		return Futures.future(new Callable<JsonNode>() {
 			@Override
@@ -50,6 +56,11 @@ public class FriendListDownloader {
 		}, actorSystem.dispatcher());
 	}
 	
+	/**
+	 * Fetch the first page then subsequent pagees of friend list as list of JSON Nodes.
+	 * @param uri Example: https://graph.facebook.com/me/friends
+	 * @return List of JSON Nodes (one {@link JsonNode} per page), containing friend list.
+	 */
 	public Future<List<JsonNode>> fetchFriendsPages(final URI uri) {
 		return Futures.future(new Callable<List<JsonNode>>() {
 			@Override
