@@ -20,6 +20,9 @@ import org.jboss.weld.environment.se.bindings.Parameters;
 import org.jboss.weld.environment.se.events.ContainerInitialized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.soluvas.facebook.FriendListDownloader;
+import org.soluvas.facebook.UserListParser;
+import org.soluvas.facebook.UserRef;
 import org.soluvas.slug.SlugUtils;
 
 import akka.actor.ActorSystem;
@@ -69,8 +72,10 @@ public class FbCli {
 					.addParameter("access_token", accessToken)
 					.addParameter("limit", "100")
 					.build();
-				Future<List<JsonNode>> pagesFuture = friendListDownloader.fetchFriendsPages(friendsUri);
-				List<JsonNode> pages = Await.result(pagesFuture, Duration.Inf());
+//				Future<List<JsonNode>> pagesFuture = friendListDownloader.fetchFriendsPages(friendsUri);
+//				List<JsonNode> pages = Await.result(pagesFuture, Duration.Inf());
+				java.util.concurrent.Future<List<JsonNode>> pagesFuture = friendListDownloader.fetchFriendsPages(friendsUri);
+				List<JsonNode> pages = pagesFuture.get();
 				
 				ObjectMapper mapper = new ObjectMapper();
 				mapper.enable(SerializationFeature.INDENT_OUTPUT);
@@ -121,14 +126,16 @@ public class FbCli {
 						return new File(input);
 					}
 				});
-				List<UserRef> userList = Await.result(userListParser.parse(files), Duration.Inf());
+//				List<UserRef> userList = Await.result(userListParser.parse(files), Duration.Inf());
+				List<UserRef> userList = userListParser.parse(files).get();
 				log.info("Parsed {} users", userList.size());
 			} else if ("user-getfromfiles".equals(args[0])) {
 				// Get many user, list of user IDs parsed from JSON files 
 				// Parse user list from JSON files 
 				String[] fileNames = Arrays.copyOfRange(args, 1, args.length);
-				Future<List<UserRef>> userListFuture = userListParser.parseNames(Arrays.asList(fileNames));
-				List<UserRef> userList = Await.result(userListFuture, Duration.Inf());
+				java.util.concurrent.Future<List<UserRef>> userListFuture = userListParser.parseNames(Arrays.asList(fileNames));
+//				List<UserRef> userList = Await.result(userListFuture, Duration.Inf());
+				List<UserRef> userList = userListFuture.get();
 				log.info("Parsed {} users", userList.size());
 				
 				// Get each user by ID and save to file
@@ -233,8 +240,9 @@ public class FbCli {
 				
 				// Parse user list from JSON files 
 				String[] fileNames = Arrays.copyOfRange(args, 1, args.length);
-				Future<List<UserRef>> userListFuture = userListParser.parseNames(Arrays.asList(fileNames));
-				List<UserRef> userList = Await.result(userListFuture, Duration.Inf());
+				java.util.concurrent.Future<List<UserRef>> userListFuture = userListParser.parseNames(Arrays.asList(fileNames));
+//				List<UserRef> userList = Await.result(userListFuture, Duration.Inf());
+				List<UserRef> userList = userListFuture.get();
 				log.info("Parsed {} users", userList.size());
 				
 				Iterable<Future<File>> fileFutureIterables = Iterables.transform(userList, new Function<UserRef, Future<File>>() {
